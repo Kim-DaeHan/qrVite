@@ -1,22 +1,18 @@
-import CryptoJS from "crypto-js";
-import "./App.css";
-import QRCodeComponent from "./QRCodeComponent";
-import WebSocketComponent from "./WebSocketComponent";
+import QR from './util/login.ts';
+import './App.css';
+import SocketIoComponent from './SocketIoComponent.tsx';
 
 function App() {
-  const secretKey = CryptoJS.lib.WordArray.random(32);
-  const keyString = CryptoJS.enc.Hex.stringify(secretKey);
-  const zgKey = CryptoJS.lib.WordArray.random(16);
-  const zgString = CryptoJS.enc.Hex.stringify(zgKey);
+  const { qrCode, roomId, secretKey, sigMessage } = QR.generateQrCode('login', 'Welcome to Dapp');
 
-  const qrData = `sk:${keyString}&zg:${zgString}&type:login`;
+  console.log('qrCode: ', qrCode);
+  console.log('roomId: ', roomId);
+  console.log('secretKey: ', secretKey);
+  console.log('message: ', sigMessage);
 
   return (
     <div>
-      <h1>QR Code Generator</h1>
-      <QRCodeComponent data={qrData} />
-      <p>{qrData}</p>
-      <WebSocketComponent />
+      <SocketIoComponent qrCode={qrCode} roomId={roomId} secretKey={secretKey} sigMessage={sigMessage} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { QRCodeCanvas } from "qrcode.react";
+import { QRCodeCanvas } from 'qrcode.react';
 
 type QRProps = {
   data: string;
