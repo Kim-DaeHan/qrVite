@@ -1,18 +1,16 @@
-import QR from './util/login.ts';
 import './App.css';
-import SocketIoComponent from './SocketIoComponent.tsx';
+import QRComponent from './QRComponent.tsx';
 
 function App() {
-  const { qrCode, roomId, secretKey, sigMessage } = QR.generateQrCode('login', 'Welcome to Dapp');
-
-  console.log('qrCode: ', qrCode);
-  console.log('roomId: ', roomId);
-  console.log('secretKey: ', secretKey);
-  console.log('message: ', sigMessage);
-
   return (
     <div>
-      <SocketIoComponent qrCode={qrCode} roomId={roomId} secretKey={secretKey} sigMessage={sigMessage} />
+      <QRComponent
+        type={'login'}
+        sigMessage={'Welcom to DAPP'}
+        did={(result) => {
+          return result;
+        }}
+      />
     </div>
   );
 }

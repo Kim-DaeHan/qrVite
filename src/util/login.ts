@@ -1,13 +1,18 @@
 import SocketService from './socketService';
 import CryptoJS from 'crypto-js';
 import cryptoUtils from './cryptoUtils';
-import { CryptoInfoType, AccountType, QrType, SignatureType } from './types';
+import { AccountCryptoType, AccountType, QrType, SignatureType } from './types';
 
 class LoginService {
   // 타입 가드 함수
-  private isCryptoInfoType(obj: any): obj is CryptoInfoType {
+  private isAccountCryptoType(obj: any): obj is AccountCryptoType {
     return (
-      typeof obj === 'object' && obj !== null && this.isSignature(obj.signature) && typeof obj.publicKey === 'string'
+      typeof obj === 'object' &&
+      obj !== null &&
+      this.isSignature(obj.signature) &&
+      typeof obj.publicKey === 'string' &&
+      typeof obj.address === 'string' &&
+      typeof obj.etc === 'string'
     );
   }
 
@@ -21,9 +26,9 @@ class LoginService {
     );
   }
 
-  private isAccountType(obj: any): obj is AccountType {
-    return typeof obj === 'object' && obj !== null && typeof obj.address === 'string';
-  }
+  // private isAccountType(obj: any): obj is AccountType {
+  //   return typeof obj === 'object' && obj !== null && typeof obj.address === 'string';
+  // }
 
   // string으로 넘어오는 경우 객체로 바꿔서 타입 체크할 경우 사용
   // ex) if (this.isJsonStringOfType<CryptoInfoType>(message, this.isCryptoInfoType)) {
@@ -36,15 +41,15 @@ class LoginService {
   //   }
   // }
 
-  public generateQrCode(type: string, sigMessage: string): QrType {
+  public generateQrCode(type: string): QrType {
     const roomId = CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Hex);
-    const secretKey = CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Hex);
+    // const secretKey = CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Hex);
 
     let qrCode = '';
     if (type === 'login') {
-      qrCode = `Login://login?roomId=${roomId}&secretKey=${secretKey}&message=${sigMessage}&type=${type}`;
+      qrCode = `Login://login?roomId=${roomId}&type=${type}`;
     } else if (type === 'send') {
-      qrCode = `Send://send?roomId=${roomId}&secretKey=${secretKey}&message=${sigMessage}&type=${type}`;
+      qrCode = `Send://send?roomId=${roomId}&type=${type}`;
     }
 
     SocketService.joinRoom(roomId);
@@ -52,60 +57,60 @@ class LoginService {
     return {
       qrCode,
       roomId,
-      secretKey,
-      sigMessage,
     };
   }
 
-  public loginVerify(roomId: string, message: string, signature: SignatureType, publicKey: string): Promise<void> {
+  public getAccountCrypto(): Promise<AccountCryptoType> {
     return new Promise((resolve, reject) => {
-      const verified = cryptoUtils.verify(message, signature, publicKey);
-      console.log('verified: ', verified);
-      SocketService.sendVerifyResult(roomId, verified);
-      if (verified) {
+      SocketService.onMessageReceived('cryptoInfo', (message: any) => {
+        if (this.isAccountCryptoType(message)) {
+          resolve(message);
+        } else {
+          reject(new Error('Invalid account crypto'));
+        }
+      });
+    });
+  }
+
+  public reciveRequest(): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      SocketService.onMessageReceived('requestMessage', (message: any) => {
+        if (message === 'Request Message') {
+          resolve(true);
+        } else {
+          reject(new Error('Request message is different'));
+        }
+      });
+    });
+  }
+
+  public sendMessage(roomId: string, message: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const result = SocketService.sendMessage(roomId, message);
+      if (result.connected) {
         resolve();
       } else {
-        reject(new Error('Verification failed'));
+        reject(new Error('Send failed'));
       }
     });
   }
 
-  public getCryptoInfo(): Promise<CryptoInfoType> {
-    return new Promise((resolve, reject) => {
-      SocketService.onMessageReceived('cryptoInfo', (message: any) => {
-        if (this.isCryptoInfoType(message)) {
-          resolve(message);
-        } else {
-          reject(new Error('Invalid crypto info'));
-        }
-      });
-    });
-  }
-
-  public getAccount(secretKey: string): Promise<AccountType> {
-    return new Promise((resolve, reject) => {
-      SocketService.onMessageReceived('encryptedMessage', (message: any) => {
-        if (this.isAccountType(message)) {
-          const address = cryptoUtils.decrypt(message.address, secretKey);
-          if (address) {
-            message.address = address;
-          }
-          resolve(message);
-        } else {
-          reject(new Error('Invalid account info'));
-        }
-      });
-    });
-  }
-
-  public async loginExchange(roomId: string, secretKey: string, message: string): Promise<AccountType> {
+  public async qrLogin(roomId: string, message: string): Promise<AccountType> {
     try {
-      const { publicKey, signature } = await this.getCryptoInfo();
-      SocketService.offMessageReceived('cryptoInfo');
-      await this.loginVerify(roomId, message, signature, publicKey);
-      const account = await this.getAccount(secretKey);
+      const requestReceived = await this.reciveRequest();
+      if (requestReceived) {
+        await this.sendMessage(roomId, message);
+        const { publicKey, signature, address } = await this.getAccountCrypto();
 
-      return account;
+        const verified = cryptoUtils.verify(message, signature, publicKey);
+        if (!verified) {
+          throw new Error('Verification failed');
+        }
+
+        return { address };
+      } else {
+        throw new Error('Verification failed');
+      }
     } catch (error) {
       console.log('error: ', error);
       return Promise.reject(error);

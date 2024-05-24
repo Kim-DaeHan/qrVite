@@ -5,13 +5,13 @@ export type SignatureType = EC.Signature;
 export interface QrType {
   qrCode: string;
   roomId: string;
-  secretKey: string;
-  sigMessage: string;
 }
 
-export interface CryptoInfoType {
+export interface AccountCryptoType {
   signature: EC.Signature;
   publicKey: string;
+  address: string;
+  etc: string;
 }
 
 export interface AccountType {
