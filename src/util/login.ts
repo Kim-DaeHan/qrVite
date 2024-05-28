@@ -81,7 +81,7 @@ class LoginService {
     return new Promise((resolve, reject) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       SocketService.onMessageReceived('requestMessage', (message: any) => {
-        if (message === 'Request Message') {
+        if (message.message === 'Request Message') {
           resolve(true);
         } else {
           reject(new Error('Request message is different'));
