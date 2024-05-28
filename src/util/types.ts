@@ -1,4 +1,4 @@
-import { ec as EC } from 'elliptic';
+import type { ec as EC } from 'elliptic';
 
 export type SignatureType = EC.Signature;
 
@@ -8,7 +8,7 @@ export interface QrType {
 }
 
 export interface AccountCryptoType {
-  signature: EC.Signature;
+  signature: string;
   publicKey: string;
   address: string;
   etc: string;

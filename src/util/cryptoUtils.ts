@@ -1,17 +1,29 @@
-import { ec as EC } from "elliptic";
-import CryptoJS from "crypto-js";
+import CryptoJS from 'crypto-js';
+import { ec as EC } from 'elliptic';
+
+const SASEUL = require('saseul');
 
 class CryptoService {
   private ec: EC;
 
   constructor() {
-    this.ec = new EC("secp256k1");
+    this.ec = new EC('secp256k1');
+  }
+
+  public xphereSign(msg: string, prKey: string) {
+    const signature = SASEUL.Sign.signature(msg, prKey);
+    return signature;
+  }
+
+  public xphereVerify(msg: string, pubKey: string, sig: string) {
+    const verified = SASEUL.Sign.signatureValidity(msg, pubKey, sig);
+    return verified;
   }
 
   public generateKeys() {
     const keyPair = this.ec.genKeyPair();
-    const privateKey = keyPair.getPrivate("hex");
-    const publicKey = keyPair.getPublic("hex");
+    const privateKey = keyPair.getPrivate('hex');
+    const publicKey = keyPair.getPublic('hex');
 
     return {
       privateKey,
@@ -20,13 +32,13 @@ class CryptoService {
   }
 
   public sign(msg: string, prKey: string) {
-    const key = this.ec.keyFromPrivate(prKey, "hex");
+    const key = this.ec.keyFromPrivate(prKey, 'hex');
     const signature = key.sign(msg);
     return signature;
   }
 
   public verify(msg: string, sig: EC.Signature, pubKey: string) {
-    const key = this.ec.keyFromPublic(pubKey, "hex");
+    const key = this.ec.keyFromPublic(pubKey, 'hex');
     const verified = key.verify(msg, sig);
     return verified;
   }

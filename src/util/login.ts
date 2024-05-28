@@ -1,21 +1,25 @@
-import SocketService from './socketService';
 import CryptoJS from 'crypto-js';
+
 import cryptoUtils from './cryptoUtils';
-import { AccountCryptoType, AccountType, QrType, SignatureType } from './types';
+import SocketService from './socketService';
+
+import type { AccountCryptoType, AccountType, QrType, SignatureType } from './types';
 
 class LoginService {
   // 타입 가드 함수
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private isAccountCryptoType(obj: any): obj is AccountCryptoType {
     return (
       typeof obj === 'object' &&
       obj !== null &&
-      this.isSignature(obj.signature) &&
+      typeof obj.signature === 'string' &&
       typeof obj.publicKey === 'string' &&
       typeof obj.address === 'string' &&
       typeof obj.etc === 'string'
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private isSignature(obj: any): obj is SignatureType {
     return (
       typeof obj === 'object' &&
@@ -47,9 +51,9 @@ class LoginService {
 
     let qrCode = '';
     if (type === 'login') {
-      qrCode = `Login://login?roomId=${roomId}&type=${type}`;
+      qrCode = `zigap://login?roomId=${roomId}&type=${type}`;
     } else if (type === 'send') {
-      qrCode = `Send://send?roomId=${roomId}&type=${type}`;
+      qrCode = `zigap://send?roomId=${roomId}&type=${type}`;
     }
 
     SocketService.joinRoom(roomId);
@@ -62,7 +66,8 @@ class LoginService {
 
   public getAccountCrypto(): Promise<AccountCryptoType> {
     return new Promise((resolve, reject) => {
-      SocketService.onMessageReceived('cryptoInfo', (message: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      SocketService.onMessageReceived('accountInfo', (message: any) => {
         if (this.isAccountCryptoType(message)) {
           resolve(message);
         } else {
@@ -74,6 +79,7 @@ class LoginService {
 
   public reciveRequest(): Promise<boolean> {
     return new Promise((resolve, reject) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       SocketService.onMessageReceived('requestMessage', (message: any) => {
         if (message === 'Request Message') {
           resolve(true);
@@ -86,7 +92,7 @@ class LoginService {
 
   public sendMessage(roomId: string, message: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const result = SocketService.sendMessage(roomId, message);
+      const result = SocketService.confirmMessage(roomId, message);
       if (result.connected) {
         resolve();
       } else {
@@ -98,11 +104,13 @@ class LoginService {
   public async qrLogin(roomId: string, message: string): Promise<AccountType> {
     try {
       const requestReceived = await this.reciveRequest();
+
       if (requestReceived) {
         await this.sendMessage(roomId, message);
         const { publicKey, signature, address } = await this.getAccountCrypto();
 
-        const verified = cryptoUtils.verify(message, signature, publicKey);
+        const verified = cryptoUtils.xphereVerify(message, publicKey, signature);
+
         if (!verified) {
           throw new Error('Verification failed');
         }
@@ -112,7 +120,6 @@ class LoginService {
         throw new Error('Verification failed');
       }
     } catch (error) {
-      console.log('error: ', error);
       return Promise.reject(error);
     } finally {
       SocketService.leaveRoom(roomId);

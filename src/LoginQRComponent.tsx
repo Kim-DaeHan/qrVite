@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import login from './util/login.ts';
-import QR from './util/login.ts';
 import { QRCodeCanvas } from 'qrcode.react';
 import { AccountType } from './util/types.ts';
 
@@ -10,12 +9,11 @@ interface Result {
 }
 
 interface QrProps {
-  type: string;
   sigMessage: string;
   did: (result: Result) => Result;
 }
-function LoginQRComponent({ type, sigMessage, did }: QrProps) {
-  const { qrCode, roomId } = QR.generateQrCode(type);
+function LoginQRComponent({ sigMessage, did }: QrProps) {
+  const { qrCode, roomId } = login.generateQrCode('login');
 
   useEffect(() => {
     const getAccount = async () => {

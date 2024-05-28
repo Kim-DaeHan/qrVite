@@ -1,11 +1,10 @@
 import './App.css';
-import QRComponent from './QRComponent.tsx';
+import LoginQRComponent from './LoginQRComponent.tsx';
 
 function App() {
   return (
     <div>
-      <QRComponent
-        type={'login'}
+      <LoginQRComponent
         sigMessage={'Welcom to DAPP'}
         did={(result) => {
           return result;
